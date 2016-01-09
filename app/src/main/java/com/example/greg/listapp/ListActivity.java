@@ -1,5 +1,6 @@
 package com.example.greg.listapp;
 
+
 import android.app.ProgressDialog;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
@@ -43,6 +44,7 @@ public class ListActivity extends AppCompatActivity
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
+		// This was mostly made for me automatically
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_list);
 		Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -60,37 +62,36 @@ public class ListActivity extends AppCompatActivity
 			}
 		});
 
-		//CarAdapter myCarAdapter = new CarAdapter(this, getDataForListView());
-		//ListView myCarListView = (ListView) findViewById(R.id.listView);
-		//myCarListView.setAdapter(myCarAdapter);
-
+		// This handles what happens when you press the button
 		final Button button = (Button) findViewById(R.id.button);
 		button.setOnClickListener(new View.OnClickListener()
 		{
 			public void onClick(View v)
 			{
-				// Perform action on click
+				// Get the "make" search from the text box
 				EditText inputEditText = (EditText) findViewById(R.id.editText);
 				String inputKeyword = inputEditText.getText().toString();
 
+				// Get the max price from the text box
 				EditText priceEditText = (EditText) findViewById(R.id.editText2);
 				String inputPrice = priceEditText.getText().toString();
 
+				// make the URL to get our JSON
 				String url = "http://107.170.200.107/carapp/getcars.php?make=" + inputKeyword + "&pricemax=" + inputPrice;
 
+				// THE MAGIC: goes to the server, gets the list of cars
+				// in JSON format, and updates the listView accordingly
 				getJSON(url);
 
+				// Log, for debugging purposes
 				Log.d("URL", "Our URL is " + url);
 
-				InputMethodManager inputManager = (InputMethodManager)
-						getSystemService(getBaseContext().INPUT_METHOD_SERVICE);
-
-				inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(),
-						InputMethodManager.HIDE_NOT_ALWAYS);
+				// This makes the keyboard drop after we press the button
+				InputMethodManager inputManager = (InputMethodManager) getSystemService(getBaseContext().INPUT_METHOD_SERVICE);
+				inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
 			}
 		});
 
-		//getJSON("http://192.168.0.111/carapp/getcars.php?keyword=o");
 	}
 
 	@Override
@@ -118,35 +119,43 @@ public class ListActivity extends AppCompatActivity
 		return super.onOptionsItemSelected(item);
 	}
 
-	// Return a list of cars
+	// Returns a generated list of cars
+	// This does NOT use the database and was only created
+	// for debugging purposes
 	public static List<Car> getDataForListView()
 	{
 		List<Car> carList = new ArrayList<Car>();
-
 		for (int i = 0; i < 20; i++)
 		{
-
 			Car car = new Car();
 			car.name = "Ford Taurus";
 			car.year = Integer.toString(1995 + i);
 			car.price = "$" + i * 100;
 			carList.add(car);
 		}
-
 		return carList;
-
 	}
 
+	// The heavy lifter.  Goes to the online server, gets
+	// the list of cars as a JSON string, parses the string,
+	// creates an adapter for the listview, and assigns the
+	// data from the JSON to the listview through the adapter.
 	private void getJSON(String url)
 	{
+		// This is a separate class since android does not allow
+		// accessing the internet in the main UI thread to avoid
+		// hanging.  AsyncTask is the base class that allows
+		// things to happen outside the UI thread.
 		class GetJSON extends AsyncTask<String, Void, String>
 		{
 
 			ProgressDialog loading;
 
 			String finalJSONString = "overwrite";
-			String finalJSONArray = "";
 
+			// This happens before we do the separate slow thread
+			// we are still in the UI thread here, which is why we
+			// can set the text in the textView
 			@Override
 			protected void onPreExecute()
 			{
@@ -154,12 +163,15 @@ public class ListActivity extends AppCompatActivity
 				((TextView) findViewById(R.id.textView)).setText("Searching for data, please wait");
 			}
 
+			// This happens outside the UI thread.  Here is where we
+			// go to the server and get the JSON string.
 			@Override
 			protected String doInBackground(String... params)
 			{
-
 				String uri = params[0];
 
+				// This try/catch statement is the part that
+				// accesses the web
 				BufferedReader bufferedReader = null;
 				try
 				{
@@ -175,18 +187,12 @@ public class ListActivity extends AppCompatActivity
 						sb.append(json + "\n");
 					}
 
-					//finalJSONString = sb.toString();
-					//Log.e("JSON", sb.toString() + " <- THE JSON SHOULD BE HERE");
-
+					// "result" is our JSON string
 					String result = sb.toString();
 
-					finalJSONArray = result;
-
-					JSONArray jArray = new JSONArray(result);
-
+					// We have finalJSONString so we can get the result
+					// outside of this background thread
 					finalJSONString = result;
-
-					//Log.e("JSON", "JSON ELEMENT RESULT: " + finalJSONString);
 
 					globalImg = LoadImageFromWebOperations("http://192.168.0.111/carapp/img/servercar.png");
 
@@ -194,20 +200,21 @@ public class ListActivity extends AppCompatActivity
 
 				} catch (Exception e)
 				{
+					// Log the error if there was one
 					Log.e("JSON", e.toString() + "");
-
 					return null;
 				}
 
 			}
 
+			// This is called after the backround thread completes
 			@Override
 			protected void onPostExecute(String s)
 			{
 				super.onPostExecute(s);
-				//loading.dismiss();
-				//((TextView) findViewById(R.id.textView)).setText(finalJSONString);
 
+				// Here we spawn a new car adapter and pass the parsed JSON in
+				// The adapter functions take care of the rest (see CarAdapter.java)
 				CarAdapter myCarAdapter = new CarAdapter(getBaseContext(), getListFromJSON(finalJSONString));
 				ListView myCarListView = (ListView) findViewById(R.id.listView);
 				myCarListView.setAdapter(myCarAdapter);
@@ -219,6 +226,8 @@ public class ListActivity extends AppCompatActivity
 
 	public Drawable globalImg;
 
+	// This parses the JSON and returns the cars as
+	// a list of "Car" classes.
 	public List<Car> getListFromJSON(String arrayString)
 	{
 		List<Car> carList = new ArrayList<Car>();
