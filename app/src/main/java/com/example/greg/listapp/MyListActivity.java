@@ -1,7 +1,9 @@
 package com.example.greg.listapp;
 
 
+import android.app.ListActivity;
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -14,11 +16,13 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
@@ -38,7 +42,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.w3c.dom.Text;
 
-public class ListActivity extends AppCompatActivity
+public class MyListActivity extends AppCompatActivity
 {
 
 	@Override
@@ -215,9 +219,30 @@ public class ListActivity extends AppCompatActivity
 
 				// Here we spawn a new car adapter and pass the parsed JSON in
 				// The adapter functions take care of the rest (see CarAdapter.java)
-				CarAdapter myCarAdapter = new CarAdapter(getBaseContext(), getListFromJSON(finalJSONString));
+				final CarAdapter myCarAdapter = new CarAdapter(getBaseContext(), getListFromJSON(finalJSONString));
 				ListView myCarListView = (ListView) findViewById(R.id.listView);
 				myCarListView.setAdapter(myCarAdapter);
+
+				// Called when a list item is clicked
+				myCarListView.setOnItemClickListener(new AdapterView.OnItemClickListener()
+				{
+					@Override
+					public void onItemClick(AdapterView<?> parent, View view, int position, long id)
+					{
+						Car currentCar = myCarAdapter.getItem(position);
+						//Toast.makeText(MyListActivity.this, currentCar.description, Toast.LENGTH_LONG).show();
+
+						String carTitle = currentCar.year + " " + currentCar.make + " " + currentCar.model;
+						String carPrice = "$" + currentCar.price;
+
+						Intent newIntent = new Intent(getBaseContext(), CarActivity.class);
+						newIntent.putExtra("TITLE", carTitle);
+						newIntent.putExtra("PRICE", carPrice);
+						newIntent.putExtra("DESCRIPTION", currentCar.description);
+						newIntent.putExtra("MILEAGE", currentCar.mileage);
+						startActivity(newIntent);
+					}
+				});
 			}
 		}
 		GetJSON gj = new GetJSON();
@@ -245,6 +270,8 @@ public class ListActivity extends AppCompatActivity
 				newCar.model = carJSON.getString("model");
 				newCar.year = carJSON.getString("year");
 				newCar.price = carJSON.getString("price");
+				newCar.description = carJSON.getString("description");
+				newCar.mileage = carJSON.getString("mileage");
 
 				//newCar.image = LoadImageFromWebOperations("http://192.168.0.111/carapp/img/servercar.png");
 				newCar.image = globalImg;
